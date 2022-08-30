@@ -15,19 +15,19 @@ from models.vggnet import *
 from models.resnet import *
 
 import wandb
-wandb.init(project="cifar10-pytorch", entity="heystranger")
+wandb.init(project="cifar10-batch", entity="heystranger")
 wandb.config = {
   "learning_rate": 0.01,
   "epochs": 50,
-  "batch_size": 500
+  "batch_size": 64
 }
 
 def main():
     parser = argparse.ArgumentParser(description="CIFAR10 image-classification")
     parser.add_argument('--lr', default=0.01, type=float, help='')
     parser.add_argument('--epoch', default=50, type=int, help='')
-    parser.add_argument('--train_batchsize', default=500, type=int, help='')
-    parser.add_argument('--test_batchsize', default=500, type=int, help='')
+    parser.add_argument('--train_batchsize', default=64, type=int, help='')
+    parser.add_argument('--test_batchsize', default=64, type=int, help='')
     parser.add_argument('--cuda', default=torch.cuda.is_available(), type=bool, help='')
     args = parser.parse_args()
 
@@ -53,15 +53,15 @@ class Start(object):
     def data_load(self):
         print('preparing data...')
         transform_train = transforms.Compose([
-            #transforms.RandomCrop(32, padding=4),
+            transforms.RandomCrop(32, padding=4),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            #transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
             # RGB의 mean과 RGB의 std
         ])
         transform_test = transforms.Compose([
             transforms.ToTensor(),
-            #transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
         ])
         trainset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_train)
         self.trainloader = DataLoader(trainset, batch_size=self.train_batchsize, shuffle=True, num_workers=2)
@@ -77,7 +77,7 @@ class Start(object):
         else:
             self.device = torch.device('cpu')
 
-        self.model = ResNet101().to(self.device)      # 모델 설정
+        self.model = VGG16().to(self.device)      # 모델 설정
         self.criterion = nn.CrossEntropyLoss().to(self.device)
         self.optimizer = optim.SGD(self.model.parameters(), lr=self.lr, weight_decay=0.0005, momentum=0.9)
 
@@ -136,7 +136,7 @@ class Start(object):
         return test_loss, test_acc
 
     def save(self):
-        model_savepath = 'model_resnet101.pth'      # 돌릴때마다 이름 바꿔주기
+        model_savepath = 'pthbatch/2/model_vggnet16.pth'      # 돌릴때마다 이름 바꿔주기
         torch.save(self.model, model_savepath)
         print(f"checkpoint saved to {model_savepath}")
 
@@ -153,8 +153,11 @@ class Start(object):
             total_train_time = (time.time() - start_time) / 60
             test_result = self.test()
 
-            wandb.log({"loss": train_result[0]})
-            wandb.log({"accuracy": train_result[1]})
+            #wandb.log({"train_loss": train_result[0], "train_accuracy": train_result[1]})
+            #wandb.log({"valid_loss": test_result[0], "valid_accuracy": test_result[1]})
+            wandb.log({"loss": {"train_loss": train_result[0], "valid_loss": test_result[0]},
+                       "accuracy": {"train_accuracy": train_result[1], "valid_accuracy": test_result[1]}})
+
             wandb.watch(self.model)
 
             accuracy = max(accuracy, test_result[1])
@@ -163,7 +166,7 @@ class Start(object):
                 print(f"===> total training time: {total_train_time:.2f} min\n")
                 self.save()
 
-        print(summary(self.model, (3, 32, 32)))
+        #print(summary(self.model, (3, 32, 32)))
 
 
 if __name__ == '__main__':
