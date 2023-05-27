@@ -1,4 +1,4 @@
-# cifar10-classication
+# Analysis the learning environment of CNN-based image classification model
 - task : Image Classification
 - dataset : CIFAR10
 - model : AlexNet, VGGNet, ResNet
